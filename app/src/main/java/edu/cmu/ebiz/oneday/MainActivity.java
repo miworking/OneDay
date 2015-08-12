@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
                     default:
                         break;
                 }
+                currentCountdownIndex[0] = -1;
                 updateBufferTimeleft();
 
             }
@@ -99,8 +100,6 @@ public class MainActivity extends Activity {
 
         buffertimetv = (TextView) findViewById(R.id.buffertime);
         buffertimetv.setText(bufferItem.getExpectedTime());
-
-
         buffertimetv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -114,12 +113,9 @@ public class MainActivity extends Activity {
             Log.d("$$$", "Current status:" + todoList.get(currentCountdownIndex[0]).getStatus());
             todoList.get(currentCountdownIndex[0]).onStarted();
         } else {
-            buffertimetv.setBackgroundColor(Color.parseColor("#6F89AB"));
-            buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
-            adapter.notifyDataSetChanged();
+            focusOnBufferTimer();
         }
         adapter.notifyDataSetChanged();
-
         updateBufferTimeleft();
 
 
@@ -156,6 +152,7 @@ public class MainActivity extends Activity {
                     //将正在运行的pause
                     if (currentCountdownIndex[0] == -1) {
                         bufferItem.onStopped();
+                        Log.d("===", "buffertimetv.setBackgroundColor1");
                         buffertimetv.setBackgroundColor(Color.parseColor("#EEEEEE"));
                         buffertimetv.setTextColor(Color.parseColor("#000000"));
                     } else {
@@ -174,10 +171,8 @@ public class MainActivity extends Activity {
                     currentCountdownIndex[0] = 0;
                 } else {
                     todoList.get(position).setStatus(TodoItemBean.STOPPED);
-                    currentCountdownIndex[0] = -1;
                     bufferItem.onStarted();
-                    buffertimetv.setBackgroundColor(Color.parseColor("#6F89AB"));
-                    buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
+                    focusOnBufferTimer();
                 }
                 adapter.notifyDataSetChanged();
             }
@@ -335,11 +330,10 @@ public class MainActivity extends Activity {
         public synchronized void run() {
             if (currentCountdownIndex[0] == -1) {
                 buffertimetv.setText(bufferItem.getTimeleftString());
-
+                focusOnBufferTimer();
             } else {
                 if (todoList.get(currentCountdownIndex[0]).getStatus() == TodoItemBean.DRY) {
-                    buffertimetv.setBackgroundColor(Color.parseColor("#6F89AB"));
-                    buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
+                    focusOnBufferTimer();
                 }
             }
             adapter.notifyDataSetChanged();
@@ -347,4 +341,12 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private void focusOnBufferTimer() {
+        if (buffertimetv != null) {
+            buffertimetv.setBackgroundColor(Color.parseColor("#6F89AB"));
+            buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
+            currentCountdownIndex[0] = -1;
+        }
+    }
 }
