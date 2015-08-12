@@ -109,7 +109,7 @@ public class MainActivity extends Activity {
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         currentCountdownIndex[0] = sharedPreferences.getInt("INDEX", -1);
-        if (currentCountdownIndex[0] != -1) {
+        if (currentCountdownIndex[0] != -1 && todoList != null && todoList.size() != 0) {
             Log.d("$$$", "Current status:" + todoList.get(currentCountdownIndex[0]).getStatus());
             todoList.get(currentCountdownIndex[0]).onStarted();
         } else {

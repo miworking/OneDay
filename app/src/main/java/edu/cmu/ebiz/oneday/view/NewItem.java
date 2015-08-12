@@ -7,7 +7,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
-import edu.cmu.ebiz.oneday.Main;
+
+import edu.cmu.ebiz.oneday.MainActivity;
 import edu.cmu.ebiz.oneday.R;
 
 public class NewItem extends Activity {
@@ -31,7 +32,7 @@ public class NewItem extends Activity {
         okBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent it = new Intent(NewItem.this,Main.class);
+                Intent it = new Intent(NewItem.this,MainActivity.class);
                 String hourstr = hour.getText().toString();
                 hourstr = hourstr.trim();
                 int hourInt = 0;
