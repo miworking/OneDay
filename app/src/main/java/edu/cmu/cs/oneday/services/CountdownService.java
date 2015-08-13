@@ -3,11 +3,10 @@ package edu.cmu.cs.oneday.services;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -27,9 +26,8 @@ public class CountdownService extends Service {
 
     private Vibrator vibrator;
 
-    private Handler timerHanlder;
-    private CountDownRunnable countDownRunnable;
-    private int[] currentCountdownIndex ;
+
+    private int[] currentCountdownIndex;
     boolean binded = false;
 
     SharedPreferences sharedPreferences;
@@ -40,13 +38,9 @@ public class CountdownService extends Service {
 
     @Override
     public void onCreate() {
-
         super.onCreate();
         Log.d("$$$", "onCreate");
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-
-//        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-//        currentCountdownIndex[0] = sharedPreferences.getInt("INDEX",-1);
     }
 
     @Override
@@ -64,14 +58,45 @@ public class CountdownService extends Service {
         // TODO: Return the communication channel to the service.
         binded = true;
         Log.d("===", "Binded successfully!");
-//        throw new UnsupportedOperationException("Not yet implemented");
-        countDownRunnable = new CountDownRunnable();
-        timerHanlder = new Handler();
-        timerHanlder.postDelayed(countDownRunnable, 999);
+
+        new CountdownTask().execute();
         return new CountdownBinder();
     }
 
-    
+
+    class CountdownTask extends AsyncTask<String, String, Boolean> {
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+        }
+
+        @Override
+        protected Boolean doInBackground(String... params) {
+            while (binded) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                countdown();
+            }
+            return true;
+        }
+    }
+
+    private void countdown() {
+        if (currentCountdownIndex[0] == -1) {
+            bufferItem.countDown();
+        } else {
+            if (!todoList.get(currentCountdownIndex[0]).countDown()) {
+                todoList.get(currentCountdownIndex[0]).setStatus(TodoItemBean.DRY);
+                currentCountdownIndex[0] = -1;
+                vibrator.vibrate(2000);
+            }
+
+        }
+    }
+
 
     public class CountdownBinder extends Binder {
 
@@ -87,29 +112,10 @@ public class CountdownService extends Service {
             return binded;
         }
 
-
         public void setCurrentCountdownIndex(int[] index) {
             currentCountdownIndex = index;
         }
     }
 
 
-    class CountDownRunnable implements Runnable {
-        @Override
-        public synchronized void run() {
-//            Log.d("$$$","current index = " + currentCountdownIndex[0]);
-            if (currentCountdownIndex[0] == -1) {
-                bufferItem.countDown();
-            } else {
-                if (!todoList.get(currentCountdownIndex[0]).countDown()) {
-                    todoList.get(currentCountdownIndex[0]).setStatus(TodoItemBean.DRY);
-                    currentCountdownIndex[0] = -1;
-                    vibrator.vibrate(2000);
-                }
-
-            }
-//            adapter.notifyDataSetChanged();
-            timerHanlder.postDelayed(countDownRunnable, 999);
-        }
-    }
 }
