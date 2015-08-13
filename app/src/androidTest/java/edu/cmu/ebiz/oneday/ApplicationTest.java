@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday;
+package edu.cmu.cs.oneday;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

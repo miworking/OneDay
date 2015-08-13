@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday.view;
+package edu.cmu.cs.oneday.view;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -8,8 +8,8 @@ import android.widget.Button;
 import android.widget.EditText;
 
 
-import edu.cmu.ebiz.oneday.MainActivity;
-import edu.cmu.ebiz.oneday.R;
+import edu.cmu.cs.oneday.MainActivity;
+import edu.cmu.cs.oneday.R;
 
 public class NewItem extends Activity {
 

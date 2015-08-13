@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday.bean;
+package edu.cmu.cs.oneday.bean;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;

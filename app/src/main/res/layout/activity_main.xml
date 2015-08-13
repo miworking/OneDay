@@ -19,7 +19,7 @@
         android:textSize="40sp" />
 
 
-    <edu.cmu.ebiz.oneday.view.SlideListView
+    <edu.cmu.cs.oneday.view.SlideListView
         android:id="@+id/onedaylistview"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

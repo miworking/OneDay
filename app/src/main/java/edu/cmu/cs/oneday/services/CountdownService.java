@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday.services;
+package edu.cmu.cs.oneday.services;
 
 import android.app.Service;
 import android.content.Intent;
@@ -13,8 +13,8 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.cmu.ebiz.oneday.bean.TodoItemBean;
-import edu.cmu.ebiz.oneday.utils.CSVReadWrite;
+import edu.cmu.cs.oneday.bean.TodoItemBean;
+import edu.cmu.cs.oneday.utils.CSVReadWrite;
 
 public class CountdownService extends Service {
 
@@ -71,6 +71,8 @@ public class CountdownService extends Service {
         return new CountdownBinder();
     }
 
+    
+
     public class CountdownBinder extends Binder {
 
         public void setTodos(List<TodoItemBean> todos) {
@@ -95,14 +97,14 @@ public class CountdownService extends Service {
     class CountDownRunnable implements Runnable {
         @Override
         public synchronized void run() {
-            Log.d("$$$","current index = " + currentCountdownIndex[0]);
+//            Log.d("$$$","current index = " + currentCountdownIndex[0]);
             if (currentCountdownIndex[0] == -1) {
                 bufferItem.countDown();
             } else {
                 if (!todoList.get(currentCountdownIndex[0]).countDown()) {
                     todoList.get(currentCountdownIndex[0]).setStatus(TodoItemBean.DRY);
                     currentCountdownIndex[0] = -1;
-                    vibrator.vibrate(500);
+                    vibrator.vibrate(2000);
                 }
 
             }

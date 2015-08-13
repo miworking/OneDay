@@ -1,6 +1,6 @@
 
 
-package edu.cmu.ebiz.oneday.view;
+package edu.cmu.cs.oneday.view;
 
 import android.content.Context;
 import android.util.AttributeSet;

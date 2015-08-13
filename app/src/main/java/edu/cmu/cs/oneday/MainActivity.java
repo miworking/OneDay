@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday;
+package edu.cmu.cs.oneday;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -25,13 +25,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import edu.cmu.ebiz.oneday.bean.TodoItemBean;
-import edu.cmu.ebiz.oneday.services.CountdownService;
-import edu.cmu.ebiz.oneday.utils.CSVReadWrite;
-import edu.cmu.ebiz.oneday.view.NewItem;
-import edu.cmu.ebiz.oneday.view.SlideListView;
-import edu.cmu.ebiz.oneday.view.SlideListView.RemoveDirection;
-import edu.cmu.ebiz.oneday.view.SlideListView.RemoveListener;
+import edu.cmu.cs.oneday.bean.TodoItemBean;
+import edu.cmu.cs.oneday.services.CountdownService;
+import edu.cmu.cs.oneday.utils.CSVReadWrite;
+import edu.cmu.cs.oneday.view.NewItem;
+import edu.cmu.cs.oneday.view.SlideListView;
+import edu.cmu.cs.oneday.view.SlideListView.RemoveDirection;
+import edu.cmu.cs.oneday.view.SlideListView.RemoveListener;
 
 public class MainActivity extends Activity {
     public static final int NEW_ITEM_REQUEST = 200;
@@ -64,7 +64,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("===", "onCreate");
+        Log.d("$$$", "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -107,8 +107,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        currentCountdownIndex[0] = sharedPreferences.getInt("INDEX", -1);
+        resumeData();
+        Log.d("$$$","get sharedPreferences of index:" + currentCountdownIndex[0]);
         if (currentCountdownIndex[0] != -1 && todoList != null && todoList.size() != 0) {
             Log.d("$$$", "Current status:" + todoList.get(currentCountdownIndex[0]).getStatus());
             todoList.get(currentCountdownIndex[0]).onStarted();
@@ -126,12 +126,9 @@ public class MainActivity extends Activity {
 
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d("===", "onServiceConnected");
                 mBinderService = (CountdownService.CountdownBinder) service;
                 mBinderService.setTodos(todoList);
-                Log.d("===", "set todolist:" + todoList.size());
                 mBinderService.setBufferItem(bufferItem);
-                Log.d("===", "set bufferItem:" + bufferItem.getTimeleftString());
 
                 if (mBinderService.isBinded()) {
                     isBinded = true;
@@ -165,15 +162,18 @@ public class MainActivity extends Activity {
                         updateBufferTimeleft();
                     }
 
-                    currentTodo.onStarted();
                     todoList.remove(position);
                     todoList.add(0, currentTodo);
+                    currentTodo.onStarted();
                     currentCountdownIndex[0] = 0;
+
                 } else {
                     todoList.get(position).setStatus(TodoItemBean.STOPPED);
                     bufferItem.onStarted();
                     focusOnBufferTimer();
+
                 }
+                listView.smoothScrollToPosition(0);
                 adapter.notifyDataSetChanged();
             }
         });
@@ -183,28 +183,47 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d("$$$","onStart");
+        resumeData();
+    }
+
+    @Override
     protected void onResume() {
-        Log.d("===", "onResume");
+        Log.d("$$$", "onResume");
         super.onResume();
-        updateBufferTimeleft();
-        adapter.notifyDataSetChanged();
+        resumeData();
     }
 
     @Override
     protected void onPause() {
         Log.d("$$$", "onPause");
+        Log.d("$$$", "Going to write index into sharedprefrence:" + currentCountdownIndex[0]);
+        backup();
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d("$$$", "onStop");
+        Log.d("$$$", "Going to write index into sharedprefrence:" + currentCountdownIndex[0]);
+        backup();
+        super.onStop();
+    }
+
+
+    private void backup() {
         csvrw.writeToCSV(todoList);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt("INDEX", currentCountdownIndex[0]);
         editor.commit();
-        Log.d("$$$", "Going to write index into sharedprefrence:" + currentCountdownIndex[0]);
-        super.onPause();
     }
-
 
     @Override
     protected void onDestroy() {
         Log.d("===", "onDestroy");
+        backup();
         super.onDestroy();
     }
 
@@ -348,5 +367,13 @@ public class MainActivity extends Activity {
             buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
             currentCountdownIndex[0] = -1;
         }
+    }
+
+    private void resumeData() {
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        currentCountdownIndex[0] = sharedPreferences.getInt("INDEX", 0);
+        Log.d("$$$","resumeData:get sharedPreferences of index:" + currentCountdownIndex[0]);
+        updateBufferTimeleft();
+        adapter.notifyDataSetChanged();
     }
 }

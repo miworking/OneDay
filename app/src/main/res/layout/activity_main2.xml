@@ -2,9 +2,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="edu.cmu.ebiz.oneday.MainActivity">
+    tools:context="edu.cmu.cs.oneday.MainActivity">
 
-    <edu.cmu.ebiz.oneday.view.SlideListView
+    <edu.cmu.cs.oneday.view.SlideListView
         android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

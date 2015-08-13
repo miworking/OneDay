@@ -1,4 +1,4 @@
-package edu.cmu.ebiz.oneday.utils;
+package edu.cmu.cs.oneday.utils;
 
 import android.content.Context;
 import android.os.Environment;
@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import edu.cmu.ebiz.oneday.bean.TodoItemBean;
+import edu.cmu.cs.oneday.bean.TodoItemBean;
 
 /**
  * Created by julie on 8/11/15.
