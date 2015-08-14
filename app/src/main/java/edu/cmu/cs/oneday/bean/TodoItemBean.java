@@ -131,7 +131,7 @@ public class TodoItemBean {
     }
 
     public String getTimeUsedString() {
-        return secondsToString(this.getTimeUsed());
+        return secondsToStringHHMM(this.getTimeUsed());
     }
 
     private String secondsToString(int seconds) {
@@ -221,7 +221,7 @@ public class TodoItemBean {
     }
 
     public String getExpectedEndTimeString() {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         return simpleDateFormat.format(expectEndTime);
     }
 
