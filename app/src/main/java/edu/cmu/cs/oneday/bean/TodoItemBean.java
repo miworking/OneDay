@@ -10,10 +10,11 @@ import java.util.Date;
 public class TodoItemBean {
     private String title;
     private long lastStarted; // timestamp
-    private long expectedTime; // in seconds
-    private int status;
-    private int timeLeft; // in seconds
+    private Date expectEndTime; // timestamp
+    private int expectDuration; // in seconds
     private int timeUsed; // in seconds
+    private int status;
+
 
     public static final int NOT_STARTED = 0;
     public static final int STARTED = 1;
@@ -29,21 +30,23 @@ public class TodoItemBean {
     }
 
     /**
-     * @param title         : description of this todo item
-     * @param expectedTime: expectedTime in minutes
+     * @param title           : description of this todo item
+     * @param expectDurationMin: expectDuration in minutes
      */
 
-    public TodoItemBean(String title, int expectedTime) {
+    public TodoItemBean(String title, int expectDurationMin) {
         this.title = title;
-        this.expectedTime = (long) (expectedTime) * 60 * 1000;
-        this.timeLeft = expectedTime * 60; // in seconds
-        this.status = NOT_STARTED;
+        this.expectDuration = expectDurationMin * 60;
         this.timeUsed = 0;
     }
 
-    public void addTime(int addTime) {
-        this.timeLeft += addTime;
-        this.expectedTime += addTime * 60;
+    // addTime in minutes
+    public void addTime(int addMinutes) {
+        this.expectDuration += addMinutes * 60;
+        Calendar c = Calendar.getInstance();
+        c.setTime(this.expectEndTime);
+        c.add(Calendar.MINUTE, addMinutes);
+        this.expectEndTime = c.getTime();
     }
 
     public String getTitle() {
@@ -70,9 +73,12 @@ public class TodoItemBean {
         this.status = DELETED;
     }
 
+    public int getExpectedDuration() {
+        return this.expectDuration;
+    }
 
-    public String getExpectedTime() {
-        int minutes = (int) (expectedTime / 1000 / 60);
+    public String getExpectDurationString() {
+        int minutes = expectDuration / 60;
         int hour = minutes / 60;
         int min = minutes % 60;
         StringBuilder res = new StringBuilder();
@@ -93,8 +99,8 @@ public class TodoItemBean {
         return res.toString();
     }
 
-    public void setExpectedTime(int minutes) {
-        this.expectedTime = (long) (minutes * 60 * 1000);
+    public void setExpectDuration(int seconds) {
+        this.expectDuration = seconds;
     }
 
     public int getStatus() {
@@ -111,7 +117,13 @@ public class TodoItemBean {
      * @return time left in seconds
      */
     public int getTimeLeft() {
-        return this.timeLeft;
+        if (this.status == STARTED) {
+            Calendar c = Calendar.getInstance();
+            return (int) (expectEndTime.getTime() - Calendar.getInstance().getTimeInMillis()) / 1000;
+        }
+        else {
+            return expectDuration - timeUsed;
+        }
     }
 
     public String getTimeleftString() {
@@ -119,21 +131,7 @@ public class TodoItemBean {
     }
 
     public String getTimeUsedString() {
-        return secondsToStringHHMM(this.getTimeUsed());
-    }
-
-    public void setTimeLeft(int timeleft) {
-        this.timeLeft = timeleft;
-    }
-
-    public boolean countDown() {
-        this.timeUsed++;
-        this.timeLeft--;
-        if (this.timeLeft > 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return secondsToString(this.getTimeUsed());
     }
 
     private String secondsToString(int seconds) {
@@ -207,39 +205,65 @@ public class TodoItemBean {
         return result.toString();
     }
 
-    public String getEndTimeString() {
-        if (this.status == STARTED) {
-            Calendar c = Calendar.getInstance();
-            c.add(Calendar.SECOND, timeLeft);
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
-            Date date = c.getTime();
-            return simpleDateFormat.format(date);
-        } else {
-            return "";
-        }
-
+    public void setExpectEndTime(Date end) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(end);
+        this.expectEndTime = cal.getTime();
     }
+
+    public Date getExpectEndTime() {
+        if (this.expectEndTime == null) {
+            Calendar c = Calendar.getInstance();
+            c.add(Calendar.SECOND,expectDuration - timeUsed);
+            this.expectEndTime = c.getTime();
+        }
+        return this.expectEndTime;
+    }
+
+    public String getExpectedEndTimeString() {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
+        return simpleDateFormat.format(expectEndTime);
+    }
+
 
     public int getTimeUsed() {
-        return timeUsed;
-    }
+        if (this.status == STARTED) {
+            Calendar c = Calendar.getInstance();
+            return (timeUsed + (int)(c.getTimeInMillis() - lastStarted)/1000);
+        }
+        else {
+            return timeUsed;
+        }
 
-    public void setTimeUsed(int timeUsed) {
-        this.timeUsed = timeUsed;
     }
 
     public void addTimeUsed(int timeused) {
         this.timeUsed += timeused;
     }
 
-
-    public void onStarted() {
-        lastStarted = System.currentTimeMillis();
+    public void start() {
+        lastStarted = Calendar.getInstance().getTimeInMillis();
+        updateExpectedEndTime();
         this.status = STARTED;
     }
 
-    public void onStopped() {
+    private void updateExpectedEndTime() {
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.SECOND, expectDuration - timeUsed);
+        this.expectEndTime = c.getTime();
+    }
+    public void setTimeUsed(int timeUsed) {
+        this.timeUsed = timeUsed;
+    }
+
+    public void stop() {
         addTimeUsed((int) (System.currentTimeMillis() - lastStarted) / 1000);
         this.status = STOPPED;
+    }
+
+
+    public boolean isDry() {
+        Calendar c = Calendar.getInstance();
+        return c.getTime().after(expectEndTime);
     }
 }

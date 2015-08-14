@@ -286,4 +286,12 @@
     <!-- 海军色 -->
     <color name="black">#000000</color>
     <!-- 黑色 -->
+
+
+    <color name="graceblue">#6F89AB</color>
+
+    <color name="littleyellow">#FFFF6F</color>
+
+    <color name="seamlessgray">#EEEEEE</color>
+
 </resources>

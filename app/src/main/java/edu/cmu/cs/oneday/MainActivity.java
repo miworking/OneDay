@@ -1,14 +1,14 @@
 package edu.cmu.cs.oneday;
 
 import android.app.Activity;
-import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
+import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Gravity;
@@ -21,12 +21,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
 import edu.cmu.cs.oneday.bean.TodoItemBean;
-import edu.cmu.cs.oneday.services.CountdownService;
 import edu.cmu.cs.oneday.utils.CSVReadWrite;
 import edu.cmu.cs.oneday.view.NewItem;
 import edu.cmu.cs.oneday.view.SlideListView;
@@ -34,8 +34,10 @@ import edu.cmu.cs.oneday.view.SlideListView.RemoveDirection;
 import edu.cmu.cs.oneday.view.SlideListView.RemoveListener;
 
 public class MainActivity extends Activity {
+    private final String TAG = "$$$MainActivity";
     public static final int NEW_ITEM_REQUEST = 200;
     private CSVReadWrite csvrw;
+    private boolean dataResumed = false;
 
 
     private int[] currentCountdownIndex = new int[1];
@@ -43,7 +45,6 @@ public class MainActivity extends Activity {
 
     private TextView buffertimetv;
     private TodoItemBean bufferItem;
-
 
     private UpdateUIRunnable updateUIRunnable;
     private Handler timerHanlder;
@@ -53,12 +54,12 @@ public class MainActivity extends Activity {
     private List<TodoItemBean> todoList = new ArrayList<TodoItemBean>();
     private List<TodoItemBean> finishedTasks = new ArrayList<TodoItemBean>();
     private List<TodoItemBean> deletedTasks = new ArrayList<TodoItemBean>();
-    private boolean isBinded = false;
 
-    private CountdownService.CountdownBinder mBinderService;
+    TodoItemBean newItem = null;
+    private Vibrator vibrator;
+
+
     SharedPreferences sharedPreferences;
-
-
     private ServiceConnection connection;
 
 
@@ -66,12 +67,34 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         Log.d("$$$", "onCreate");
         super.onCreate(savedInstanceState);
+        vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         setContentView(R.layout.activity_main);
 
-
-        csvrw = new CSVReadWrite(this);
-        todoList = csvrw.readFromCSV();
+        // prepare buffer timer
         bufferItem = new TodoItemBean("Buffer", 60);
+        buffertimetv = (TextView) findViewById(R.id.buffertime);
+        buffertimetv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addNewItem();
+            }
+        });
+        updateBufferTimeleft();
+
+        // load data from csv and sharedpreference
+        csvrw = new CSVReadWrite(this);
+        resumeData();
+
+
+        // start default item
+        Log.d(TAG, "get sharedPreferences of index:" + currentCountdownIndex[0]);
+        if (currentCountdownIndex[0] != -1 && todoList != null && todoList.size() != 0) {
+            Log.d(TAG, "Current status:" + todoList.get(currentCountdownIndex[0]).getStatus());
+            todoList.get(currentCountdownIndex[0]).start();
+        } else {
+            focusOnBufferTimer();
+        }
+
 
         listView = (SlideListView) findViewById(R.id.onedaylistview);
         adapter = new SlideAdapter();
@@ -92,128 +115,119 @@ public class MainActivity extends Activity {
                     default:
                         break;
                 }
-                currentCountdownIndex[0] = -1;
-                updateBufferTimeleft();
-
-            }
-        });
-
-        buffertimetv = (TextView) findViewById(R.id.buffertime);
-        buffertimetv.setText(bufferItem.getExpectedTime());
-        buffertimetv.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                addNewItem();
-            }
-        });
-
-        resumeData();
-        Log.d("$$$","get sharedPreferences of index:" + currentCountdownIndex[0]);
-        if (currentCountdownIndex[0] != -1 && todoList != null && todoList.size() != 0) {
-            Log.d("$$$", "Current status:" + todoList.get(currentCountdownIndex[0]).getStatus());
-            todoList.get(currentCountdownIndex[0]).onStarted();
-        } else {
-            focusOnBufferTimer();
-        }
-        adapter.notifyDataSetChanged();
-        updateBufferTimeleft();
-
-
-        connection = new ServiceConnection() {
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-            }
-
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                mBinderService = (CountdownService.CountdownBinder) service;
-                mBinderService.setTodos(todoList);
-                mBinderService.setBufferItem(bufferItem);
-
-                if (mBinderService.isBinded()) {
-                    isBinded = true;
-                }
-                mBinderService.setCurrentCountdownIndex(currentCountdownIndex);
-                Log.d("===", "set currentCountdownIndex:" + currentCountdownIndex[0]);
-
-            }
-        };
-        Intent bindIntent = new Intent(MainActivity.this, CountdownService.class);
-        bindService(bindIntent, connection, BIND_AUTO_CREATE);
-
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public synchronized void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (currentCountdownIndex[0] != position) { //有其他的timer在运行
-                    //将正在运行的pause
-                    if (currentCountdownIndex[0] == -1) {
-                        bufferItem.onStopped();
-                        Log.d("===", "buffertimetv.setBackgroundColor1");
-                        buffertimetv.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                        buffertimetv.setTextColor(Color.parseColor("#000000"));
-                    } else {
-                        todoList.get(currentCountdownIndex[0]).onStopped();
-                    }
-
-                    TodoItemBean currentTodo = todoList.get(position);
-                    if (currentTodo.getStatus() == TodoItemBean.DRY) {
-                        currentTodo.addTime(30 * 60);
-                        updateBufferTimeleft();
-                    }
-
-                    todoList.remove(position);
-                    todoList.add(0, currentTodo);
-                    currentTodo.onStarted();
-                    currentCountdownIndex[0] = 0;
-
-                } else {
-                    todoList.get(position).setStatus(TodoItemBean.STOPPED);
-                    bufferItem.onStarted();
+                if (position == 0) {
+                    currentCountdownIndex[0] = -1;
                     focusOnBufferTimer();
-
                 }
-                listView.smoothScrollToPosition(0);
+                updateBufferTimeleft();
                 adapter.notifyDataSetChanged();
             }
         });
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                vibrator.vibrate(20);
+                if (currentCountdownIndex[0] != position) { //有其他的timer在运行
+                    Log.d(TAG, "Going to stop  task:" + currentCountdownIndex[0]);
+                    stopCurrentItem(currentCountdownIndex[0]);
+                    Log.d(TAG, "Going to start  task:" + position);
+                    startItem(position);
+                } else {
+                    stopItem(position);
+                    startBuffer();
+                }
+                adapter.notifyDataSetChanged();
+                updateBufferTimeleft();
+                listView.smoothScrollToPosition(0);
+
+            }
+        });
+
+
+        adapter.notifyDataSetChanged();
         updateUIRunnable = new UpdateUIRunnable();
         timerHanlder = new Handler();
         timerHanlder.postDelayed(updateUIRunnable, 1000);
     }
 
+
     @Override
     protected void onStart() {
         super.onStart();
-        Log.d("$$$","onStart");
-        resumeData();
+        Log.d(TAG, "onStart");
     }
 
     @Override
     protected void onResume() {
-        Log.d("$$$", "onResume");
+        Log.d(TAG, "onResume");
         super.onResume();
-        resumeData();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        Log.d(TAG, "onSaveInstanceState");
+        super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onPause() {
-        Log.d("$$$", "onPause");
-        Log.d("$$$", "Going to write index into sharedprefrence:" + currentCountdownIndex[0]);
-        backup();
+        Log.d(TAG, "onPause");
+//        backupData();
         super.onPause();
     }
 
     @Override
     protected void onStop() {
-        Log.d("$$$", "onStop");
-        Log.d("$$$", "Going to write index into sharedprefrence:" + currentCountdownIndex[0]);
-        backup();
+        Log.d(TAG, "onStop");
+        backupData();
         super.onStop();
     }
 
+    private void topItem(int position) {
+        TodoItemBean currentTodo = todoList.get(position);
+        todoList.remove(position);
+        todoList.add(0, currentTodo);
+        updateEndTime();
+    }
 
-    private void backup() {
+    private synchronized void startItem(int position) {
+        if (position >= 0) {
+            TodoItemBean currentTodo = todoList.get(position);
+            if (currentTodo.getStatus() == TodoItemBean.DRY) {
+                currentTodo.addTime(30);
+                updateBufferTimeleft();
+            }
+            currentTodo.start();
+            currentCountdownIndex[0] = 0;
+            topItem(position);
+        }
+    }
+
+
+    private void stopItem(int position) {
+        todoList.get(position).stop();
+    }
+
+    private void startBuffer() {
+        bufferItem.start();
+        focusOnBufferTimer();
+    }
+
+    private void stopBuffer() {
+        bufferItem.stop();
+        removeFocusOnBufferTimer();
+    }
+
+    private void stopCurrentItem(int index) {
+        if (index == -1) {
+            stopBuffer();
+        } else {
+            stopItem(index);
+        }
+    }
+
+    private void backupData() {
         csvrw.writeToCSV(todoList);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt("INDEX", currentCountdownIndex[0]);
@@ -223,8 +237,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         Log.d("===", "onDestroy");
-        backup();
         super.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        Log.d(TAG, "onLowMemory");
+        super.onLowMemory();
     }
 
 
@@ -265,32 +284,33 @@ public class MainActivity extends Activity {
             TodoItemBean bean = todoList.get(position);
             viewHolder.title.setText(bean.getTitle());
             viewHolder.timeleft.setText(bean.getTimeleftString());
-            viewHolder.endtime.setText("to: " + bean.getEndTimeString());
+            viewHolder.endtime.setText("to: " + bean.getExpectedEndTimeString());
             viewHolder.timeused.setText("spent: " + bean.getTimeUsedString());
-            if (bean.getStatus() == TodoItemBean.STARTED) { //highlighted
-                viewHolder.layout.setBackgroundColor(Color.parseColor("#6F89AB"));
-                viewHolder.timeleft.setBackgroundColor(Color.parseColor("#6F89AB"));
-                viewHolder.timeleft.setTextColor(Color.parseColor("#FFFF6F"));
-                viewHolder.title.setBackgroundColor(Color.parseColor("#6F89AB"));
-                viewHolder.title.setTextColor(Color.parseColor("#FFFFFF"));
-                viewHolder.endtime.setBackgroundColor(Color.parseColor("#6F89AB"));
-                viewHolder.endtime.setTextColor(Color.parseColor("#FFFFFF"));
-                viewHolder.timeused.setBackgroundColor(Color.parseColor("#6F89AB"));
-                viewHolder.timeused.setTextColor(Color.parseColor("#FFFFFF"));
-
-            } else {// not highlighted
-                viewHolder.layout.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                viewHolder.timeleft.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                viewHolder.timeleft.setTextColor(Color.parseColor("#ADADAD"));//grey
-                viewHolder.title.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                viewHolder.title.setTextColor(Color.parseColor("#111111"));
-                viewHolder.endtime.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                viewHolder.endtime.setTextColor(Color.parseColor("#ADADAD"));
-                viewHolder.endtime.setGravity(Gravity.RIGHT | Gravity.BOTTOM);
-                viewHolder.timeused.setBackgroundColor(Color.parseColor("#EEEEEE"));
-                viewHolder.timeused.setTextColor(Color.parseColor("#ADADAD"));
-                viewHolder.timeused.setGravity(Gravity.RIGHT | Gravity.BOTTOM);
+            int backgroundcolor = R.color.seamlessgray;
+            int textcolor = R.color.black;
+            switch (bean.getStatus()) {
+                case TodoItemBean.STARTED: {
+                    backgroundcolor = R.color.graceblue;
+                    textcolor = R.color.littleyellow;
+                    break;
+                }
+                case TodoItemBean.STOPPED: {
+                    backgroundcolor = R.color.seamlessgray;
+                    textcolor = R.color.black;
+                    break;
+                }
+                case TodoItemBean.DRY: {
+                    backgroundcolor = R.color.darkred;
+                    textcolor = R.color.darkgrey;
+                    break;
+                }
+                case TodoItemBean.FINISHED: {
+                    backgroundcolor = R.color.greenyellow;
+                    textcolor = R.color.black;
+                    break;
+                }
             }
+            viewHolder.setSpecialColor(MainActivity.this, backgroundcolor, textcolor);
             return convertView;
         }
 
@@ -303,6 +323,21 @@ public class MainActivity extends Activity {
         public TextView endtime;
         public TextView timeused;
 
+        public void setSpecialColor(Context context, int backgroundcolor, int textcolor) {
+            this.layout.setBackgroundResource(backgroundcolor);
+            this.title.setBackgroundResource(backgroundcolor);
+            this.timeleft.setBackgroundResource(backgroundcolor);
+            this.endtime.setBackgroundResource(backgroundcolor);
+            this.timeused.setBackgroundResource(backgroundcolor);
+
+            this.title.setTextColor(context.getResources().getColor(textcolor));
+            this.timeleft.setTextColor(context.getResources().getColor(textcolor));
+            this.endtime.setTextColor(context.getResources().getColor(textcolor));
+            this.timeused.setTextColor(context.getResources().getColor(textcolor));
+
+            this.timeused.setGravity(Gravity.RIGHT | Gravity.BOTTOM);
+        }
+
     }
 
 
@@ -312,6 +347,7 @@ public class MainActivity extends Activity {
     }
 
 
+    // update buffer time left, -- will recalculate  time left for today
     private void updateBufferTimeleft() {
         Calendar c = Calendar.getInstance();
         long now = c.getTimeInMillis();
@@ -321,24 +357,29 @@ public class MainActivity extends Activity {
         c.set(Calendar.MINUTE, 0);
         c.set(Calendar.SECOND, 0);
 
-        long timeleft = c.getTimeInMillis() - now;
+        int timeleft = (int) ((c.getTimeInMillis() - now) / 1000);
         for (int i = 0; i < todoList.size(); i++) {
-            timeleft -= todoList.get(i).getTimeLeft() * 1000;
+            timeleft -= todoList.get(i).getTimeLeft();
         }
-        bufferItem.setTimeLeft((int) (timeleft / 1000));
-        buffertimetv.setText(bufferItem.getTimeleftString());
-
+        if (buffertimetv != null) {
+            buffertimetv.setText(secondsToString(timeleft));
+        }
+        updateEndTime();
     }
 
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult");
         if (requestCode == NEW_ITEM_REQUEST && resultCode == RESULT_OK) {
             String item_title = data.getStringExtra("NEW_ITEM_TITLE");
-            int item_duration_min = data.getIntExtra("NEW_ITEM_DUR_MIN", 0);
-            TodoItemBean todoItemBean = new TodoItemBean(item_title, item_duration_min);
-            this.todoList.add(todoItemBean);
+            int item_duration_min = data.getIntExtra("NEW_ITEM_DUR_MIN", 30);
+            newItem = new TodoItemBean(item_title, item_duration_min);
+            todoList.add(newItem);
+            updateEndTime();
+            Log.d(TAG, "new item added");
             updateBufferTimeleft();
             adapter.notifyDataSetChanged();
         }
@@ -346,34 +387,131 @@ public class MainActivity extends Activity {
 
     class UpdateUIRunnable implements Runnable {
         @Override
-        public synchronized void run() {
+        public void run() {
             if (currentCountdownIndex[0] == -1) {
-                buffertimetv.setText(bufferItem.getTimeleftString());
                 focusOnBufferTimer();
-            } else {
-                if (todoList.get(currentCountdownIndex[0]).getStatus() == TodoItemBean.DRY) {
-                    focusOnBufferTimer();
-                }
             }
+            else if (currentCountdownIndex[0] == 0 && todoList.get(0).isDry()){
+                todoList.get(0).stop();
+                todoList.get(0).setStatus(TodoItemBean.DRY);
+                vibrator.vibrate(2000);
+                currentCountdownIndex[0] = -1;
+                focusOnBufferTimer();
+            }
+            updateBufferTimeleft();
+            updateEndTime();
             adapter.notifyDataSetChanged();
             timerHanlder.postDelayed(updateUIRunnable, 1000);
         }
     }
 
 
-    private void focusOnBufferTimer() {
+    private synchronized void focusOnBufferTimer() {
         if (buffertimetv != null) {
+            updateBufferTimeleft();
             buffertimetv.setBackgroundColor(Color.parseColor("#6F89AB"));
             buffertimetv.setTextColor(Color.parseColor("#FFFFFF"));
             currentCountdownIndex[0] = -1;
         }
+
     }
 
-    private void resumeData() {
+    private void removeFocusOnBufferTimer() {
+        if (buffertimetv != null) {
+            updateBufferTimeleft();
+            buffertimetv.setBackgroundColor(Color.parseColor("#EEEEEE"));
+            buffertimetv.setTextColor(Color.parseColor("#000000"));
+        }
+    }
+
+
+    /**
+     * Load both index and todolist
+     */
+    private synchronized void resumeData() {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         currentCountdownIndex[0] = sharedPreferences.getInt("INDEX", 0);
-        Log.d("$$$","resumeData:get sharedPreferences of index:" + currentCountdownIndex[0]);
-        updateBufferTimeleft();
+        if (currentCountdownIndex != null && csvrw != null) {
+            todoList = csvrw.readFromCSV();
+            Log.d(TAG, "resumeData:" + todoList.size());
+            updateEndTime();
+        }
+
+    }
+
+    private void countdown() {
+        if (currentCountdownIndex[0] == -1) {
+            focusOnBufferTimer();
+        } else {
+            Log.d(TAG, "Count Down:" + todoList.get(currentCountdownIndex[0]).getTitle() + ":[" + todoList.get(currentCountdownIndex[0]).getTimeLeft());
+            if (!todoList.get(currentCountdownIndex[0]).isDry()) {
+                todoList.get(currentCountdownIndex[0]).setStatus(TodoItemBean.DRY);
+                vibrator.vibrate(2000);
+                focusOnBufferTimer();
+            }
+        }
         adapter.notifyDataSetChanged();
+    }
+
+    private String secondsToString(int seconds) {
+        int sign = 1;
+        if (seconds < 0) {
+            sign = -1;
+            seconds = 0 - seconds;
+        }
+        int sec = seconds % 60;
+        int min = seconds / 60;
+        int hour = min / 60;
+        min = min % 60;
+        StringBuilder result = new StringBuilder();
+        if (sign == -1) {
+            result.append("-");
+        }
+        if (hour >= 10) {
+            result.append(hour);
+        } else {
+            result.append("0");
+            result.append(hour);
+        }
+        result.append(":");
+
+        if (min >= 10) {
+            result.append(min);
+        } else {
+            result.append("0");
+            result.append(min);
+        }
+        result.append(":");
+
+        if (sec >= 10) {
+            result.append(sec);
+        } else {
+            result.append("0");
+            result.append(sec);
+        }
+        return result.toString();
+    }
+
+
+    private void updateEndTime() {
+        if (todoList.size() > 0) {
+            Calendar c = Calendar.getInstance();
+            TodoItemBean cur;
+            if (currentCountdownIndex[0] == -1) {
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss");
+                for (int i = 0; i < todoList.size(); i++) {
+                    cur = todoList.get(i);
+                    c.add(Calendar.SECOND, cur.getExpectedDuration() - cur.getTimeUsed());
+                    cur.setExpectEndTime(c.getTime());
+                }
+            } else { // = -1
+                c.setTime(todoList.get(0).getExpectEndTime());
+                for (int i = 1; i < todoList.size(); i++) {
+                    cur = todoList.get(i);
+                    c.add(Calendar.SECOND, (cur.getExpectedDuration() - cur.getTimeUsed()));
+                    cur.setExpectEndTime(c.getTime());
+                }
+            }
+        }
     }
 }

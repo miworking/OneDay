@@ -97,7 +97,7 @@ public class CSVReadWrite {
                     StringBuilder line = new StringBuilder();
                     line.append(todo.getTitle());
                     line.append(",");
-                    line.append(todo.getTimeLeft());
+                    line.append(todo.getExpectedDuration());
                     line.append(",");
                     line.append(todo.getTimeUsed());
                     if (i < todoList.size() - 1) {
@@ -125,7 +125,7 @@ public class CSVReadWrite {
                 String[] values = strLine.split(",");
                 TodoItemBean todo = new TodoItemBean();
                 todo.setTitle(values[0]);
-                todo.setTimeLeft(Integer.parseInt(values[1]));
+                todo.setExpectDuration(Integer.parseInt(values[1]));
                 todo.setTimeUsed(Integer.parseInt(values[2]));
                 todolist.add(todo);
             }

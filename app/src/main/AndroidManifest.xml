@@ -24,10 +24,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".services.CountdownService"
-            android:enabled="true"
-            android:exported="true"></service>
     </application>
 
 </manifest>
