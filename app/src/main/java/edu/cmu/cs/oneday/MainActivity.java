@@ -392,11 +392,19 @@ public class MainActivity extends Activity {
                 focusOnBufferTimer();
             }
             else if (currentCountdownIndex[0] == 0 && todoList.get(0).isDry()){
-                todoList.get(0).stop();
-                todoList.get(0).setStatus(TodoItemBean.DRY);
+//                todoList.get(0).stop();
+//                todoList.get(0).setStatus(TodoItemBean.DRY);
+                int addedTime = todoList.get(0).getExpectedDuration() / 60;
+                if (addedTime > 30) {
+                    todoList.get(0).addTime(30);
+                }
+                else {
+                    todoList.get(0).addTime(addedTime);
+                }
+                todoList.get(0).startDry();
                 vibrator.vibrate(2000);
-                currentCountdownIndex[0] = -1;
-                focusOnBufferTimer();
+//                currentCountdownIndex[0] = -1;
+//                focusOnBufferTimer();
             }
             updateBufferTimeleft();
             updateEndTime();
@@ -443,7 +451,8 @@ public class MainActivity extends Activity {
         if (currentCountdownIndex[0] == -1) {
             focusOnBufferTimer();
         } else {
-            Log.d(TAG, "Count Down:" + todoList.get(currentCountdownIndex[0]).getTitle() + ":[" + todoList.get(currentCountdownIndex[0]).getTimeLeft());
+            Log.d(TAG, "Count Down:" + todoList.get(currentCountdownIndex[0]).getTitle() + ":[" + todoList.get(
+                    currentCountdownIndex[0]).getTimeLeft());
             if (!todoList.get(currentCountdownIndex[0]).isDry()) {
                 todoList.get(currentCountdownIndex[0]).setStatus(TodoItemBean.DRY);
                 vibrator.vibrate(2000);

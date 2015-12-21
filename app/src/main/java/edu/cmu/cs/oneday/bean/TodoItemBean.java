@@ -1,5 +1,7 @@
 package edu.cmu.cs.oneday.bean;
 
+import android.util.Log;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -42,7 +44,7 @@ public class TodoItemBean {
 
     // addTime in minutes
     public void addTime(int addMinutes) {
-        this.expectDuration += addMinutes * 60;
+//        this.expectDuration += addMinutes * 60;
         Calendar c = Calendar.getInstance();
         c.setTime(this.expectEndTime);
         c.add(Calendar.MINUTE, addMinutes);
@@ -247,6 +249,11 @@ public class TodoItemBean {
         this.status = STARTED;
     }
 
+    public void startDry() {
+//        lastStarted = Calendar.getInstance().getTimeInMillis();
+        updateExpectedEndTime();
+        this.status = STARTED;
+    }
     private void updateExpectedEndTime() {
         Calendar c = Calendar.getInstance();
         c.add(Calendar.SECOND, expectDuration - timeUsed);
